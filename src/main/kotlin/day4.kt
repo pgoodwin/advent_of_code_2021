@@ -29,6 +29,13 @@ class Board(val positionValues: List<List<Int>>) {
 }
 
 fun main() {
+    val (bingoBalls, boards) = readBingoData()
+
+    printFirstWinnerReport(bingoBalls, boards)
+    printLastWinnerReport(bingoBalls, boards)
+}
+
+fun readBingoData(): Pair<List<Int>, List<Board>> {
     val bingoData = File("bingo.txt").readLines().iterator()
     val bingoBalls = bingoData.next().split(",").map(String::toInt)
 
@@ -48,12 +55,10 @@ fun main() {
             )
         )
     }
-
-    printFirstWinnerReport(bingoBalls, boards)
-    printLastWinnerReport(bingoBalls, boards)
+    return Pair(bingoBalls, boards)
 }
 
-fun printLastWinnerReport(bingoBalls: List<Int>, boards: MutableList<Board>) {
+fun printLastWinnerReport(bingoBalls: List<Int>, boards: List<Board>) {
     val remainingBoards = mutableListOf<Board>()
     remainingBoards.addAll(boards)
     val pickedNumbers = mutableListOf<Int>()
@@ -75,10 +80,7 @@ fun printLastWinnerReport(bingoBalls: List<Int>, boards: MutableList<Board>) {
     }
 }
 
-private fun printFirstWinnerReport(
-    bingoBalls: List<Int>,
-    boards: MutableList<Board>
-) {
+private fun printFirstWinnerReport(bingoBalls: List<Int>, boards: List<Board>) {
     val pickedNumbers = mutableListOf<Int>()
     bingoBalls.forEach { picked ->
         pickedNumbers.add(picked)
