@@ -13,16 +13,10 @@ class Board(val positionValues: List<List<Int>>) {
 
     override fun toString(): String {
         val rows = StringBuilder()
-        rows.append(positionValues[0].fold("") { acc, num -> "$acc $num" })
-        rows.append("\n")
-        rows.append(positionValues[1].fold("") { acc, num -> "$acc $num" })
-        rows.append("\n")
-        rows.append(positionValues[2].fold("") { acc, num -> "$acc $num" })
-        rows.append("\n")
-        rows.append(positionValues[3].fold("") { acc, num -> "$acc $num" })
-        rows.append("\n")
-        rows.append(positionValues[4].fold("") { acc, num -> "$acc $num" })
-        rows.append("\n")
+        (0..4).forEach {
+            rows.append(positionValues[it].fold("") { acc, num -> "$acc $num" })
+            rows.append("\n")
+        }
         return rows.toString()
     }
 
@@ -45,13 +39,9 @@ fun readBingoData(): Pair<List<Int>, List<Board>> {
         bingoData.next() // skip blank line
         boards.add(
             Board(
-                listOf(
-                    boardRegEx.findAll(bingoData.next()).toList().map { it.value.toInt() },
-                    boardRegEx.findAll(bingoData.next()).toList().map { it.value.toInt() },
-                    boardRegEx.findAll(bingoData.next()).toList().map { it.value.toInt() },
-                    boardRegEx.findAll(bingoData.next()).toList().map { it.value.toInt() },
-                    boardRegEx.findAll(bingoData.next()).toList().map { it.value.toInt() },
-                )
+                (0..4).map {
+                    boardRegEx.findAll(bingoData.next()).toList().map { it.value.toInt() }
+                }
             )
         )
     }
