@@ -2,19 +2,17 @@ import java.io.File
 
 fun main() {
     var fish = File("fish.txt").readText().split(",").map(String::toInt)
-    (1..256).forEach {fish = spawnFish(fish)}
-    println(fish.size)
+
+    var fishTanks = LongArray(9)
+    fish.forEach { age -> fishTanks[age] = fishTanks[age] + 1}
+    (1..80).forEach {ageFish(fishTanks)}
+    println(fishTanks.sum())
 }
 
-private fun spawnFish(fish: List<Int>): List<Int> {
-    val newFish = mutableListOf<Int>()
-    val agedFish = fish.map { age ->
-        if (age == 0) {
-            newFish.add(8)
-            6
-        } else {
-            age - 1
-        }
-    }
-    return agedFish + newFish
+fun ageFish(fishTanks: LongArray) {
+    val spawningFishCount = fishTanks[0]
+    for(i in 0.rangeTo( fishTanks.size - 2)) { fishTanks[i] = fishTanks[i + 1] }
+    fishTanks[fishTanks.size - 1] = spawningFishCount
+    fishTanks[6] += spawningFishCount
 }
+
