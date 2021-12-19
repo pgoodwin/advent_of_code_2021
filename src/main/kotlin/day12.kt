@@ -3,9 +3,9 @@ import java.io.File
 fun main() {
     val tunnels = readTunnels("cave_map.txt")
     val caves = mapCaves(tunnels)
-    traverse(caves, listOf("start"), "end", listOf()).onEach(::println).size.also(::println)
-    println("********************************************************************************************************")
-    traverseSmallCavesTwice(caves, listOf("start"), "end", listOf()).onEach(::println).size.also(::println)
+    traverse(caves, ::isLargeOrUnexplored, listOf("start"), "end", listOf()).size.also(::println)
+    println("\n\n\n********************************************************************************************************\n\n\n")
+    traverse(caves, ::isLargeOrThereIsExtraExploreTime, listOf("start"), "end", listOf()).size.also(::println)
 }
 
 private fun readTunnels(tunnelFile: String): List<List<String>> {
@@ -29,39 +29,35 @@ private fun mapCaves(tunnels: List<List<String>>): Map<String, List<String>> {
 
 fun traverse(
     caves: Map<String, List<String>>,
+    explorableCriteria: (List<String>, String, String) -> Boolean,
     currentPath: List<String>,
     end: String,
     previousTraversals: List<List<String>>
 ): List<List<String>> {
-    if (currentPath.last() == end) return previousTraversals.append(currentPath)
+    if (currentPath.last() == end) return previousTraversals.append(currentPath.also(::println))
     val explorableCaves = caves[currentPath.last()]!!.filter { connectedCave ->
-        !currentPath.contains(connectedCave) || isLarge(connectedCave)
+        explorableCriteria(currentPath, connectedCave, end)
     }
     return explorableCaves.fold(previousTraversals) { currentTraversals, connectedCave ->
-        traverse(caves, currentPath.append(connectedCave), end, currentTraversals)
+        traverse(caves, explorableCriteria, currentPath.append(connectedCave), end, currentTraversals)
     }
 }
 
-fun traverseSmallCavesTwice(
-    caves: Map<String, List<String>>,
-    currentPath: List<String>,
-    end: String,
-    previousTraversals: List<List<String>>
-): List<List<String>> {
-    if (currentPath.last() == end) return previousTraversals.append(currentPath)
-    val explorableCaves = caves[currentPath.last()]!!.filter { connectedCave ->
-        isLarge(connectedCave)
-                || !currentPath.contains(connectedCave)
-                || (
-                !containsDuplicateSmallCaves(currentPath)
-                        && connectedCave != currentPath.first()
-                        && connectedCave != end
-                )
-    }
-    return explorableCaves.fold(previousTraversals) { currentTraversals, connectedCave ->
-        traverseSmallCavesTwice(caves, currentPath.append(connectedCave), end, currentTraversals)
-    }
+fun isLargeOrUnexplored(path: List<String>, caveName: String, ignored: String): Boolean {
+    return !path.contains(caveName) || isLarge(caveName)
 }
+
+private fun isLargeOrThereIsExtraExploreTime(
+    currentPath: List<String>,
+    connectedCave: String,
+    end: String
+) = (isLarge(connectedCave)
+        || !currentPath.contains(connectedCave)
+        || (
+        !containsDuplicateSmallCaves(currentPath)
+                && connectedCave != currentPath.first()
+                && connectedCave != end
+        ))
 
 fun containsDuplicateSmallCaves(path: List<String>): Boolean {
     val smallCavesOnPath = path.filter { !isLarge(it) }
