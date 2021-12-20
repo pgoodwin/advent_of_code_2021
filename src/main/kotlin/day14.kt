@@ -1,6 +1,46 @@
 import java.io.File
 import kotlin.math.pow
 
+class PartialInsertionCalculation constructor(
+    private val chain: MutableList<Char>,
+    private val rules: Array<CharArray>,
+    private val source: PartialInsertionCalculation?
+) : Iterator<Char> {
+    private var index =
+        if (chain[0] == ' ') chain.size else 0 // can't supply values unless there are valid elements in the chain
+
+    override fun hasNext(): Boolean {
+        if (!needsRefill())
+            return true
+
+        if (canRefill())
+            return true
+
+        return index < chain.size
+    }
+
+    override fun next(): Char {
+        if (needsRefill() && canRefill())
+            refillByExpandingNextPair()
+        return chain[index++]
+    }
+
+    private fun refillByExpandingNextPair() {
+        val first = if (chain.last() == ' ') source!!.next() else chain.last()
+        val second = source!!.next()
+        iterateInsertionRulesIntoChain(chain, first, second, rules)
+        index = 0
+    }
+
+    private fun canRefill(): Boolean {
+        return source != null && source.hasNext()
+    }
+
+    private fun needsRefill(): Boolean {
+        return index > chain.size - 2 // Use the last element to expand the next portion of the chain
+    }
+}
+
 fun main() {
     val polymerFileLines = File("polymer_rules.txt").readLines()
     val template = polymerFileLines.first().toList()
@@ -23,6 +63,21 @@ fun main() {
     val elementFrequencies = chainAfter10.groupingBy { it }.eachCount()
     val sortedFrequencies = elementFrequencies.toList().sortedBy { it.second }.also(::println)
     println(sortedFrequencies.last().second - sortedFrequencies.first().second)
+
+    val insertionCalculationRoot = PartialInsertionCalculation(template.toMutableList(), polymerRules, null)
+    val insertionCalculation = PartialInsertionCalculation(
+        blankChainToHoldInsertions(3),
+        polymerRules,
+        PartialInsertionCalculation(
+            blankChainToHoldInsertions(3),
+            polymerRules,
+            PartialInsertionCalculation(
+                blankChainToHoldInsertions(2),
+                polymerRules,
+                PartialInsertionCalculation(blankChainToHoldInsertions(2), polymerRules, insertionCalculationRoot)
+            )))
+    val newChainAfter10 = insertionCalculation.asSequence().toList()
+    println(newChainAfter10)
 }
 
 private fun sizeAtIteration(iterationCount: Int, initialSize: Int): Long {
@@ -31,9 +86,13 @@ private fun sizeAtIteration(iterationCount: Int, initialSize: Int): Long {
 }
 
 private fun iterateInsertionRules(first: Char, last: Char, iterations: Int, rules: Array<CharArray>): List<Char> {
-    val chain = MutableList(sizeAtIteration(iterations, 2).toInt()) { ' ' }
-    return iterateInsertionRulesIntoChain(chain, first, last, rules)
+    val chain = blankChainToHoldInsertions(iterations)
+    iterateInsertionRulesIntoChain(chain, first, last, rules)
+    return chain
 }
+
+private fun blankChainToHoldInsertions(iterationCount: Int) =
+    MutableList(sizeAtIteration(iterationCount, 2).toInt()) { ' ' }
 
 // Calculate the exact final position of each inserted element based on the total number of iterations
 // and put it there as soon as it's calculated
@@ -42,7 +101,7 @@ private fun iterateInsertionRulesIntoChain(
     first: Char,
     last: Char,
     rules: Array<CharArray>
-): MutableList<Char> {
+) {
     val lastIndex = chain.size - 1
 
     chain[0] = first
@@ -60,7 +119,6 @@ private fun iterateInsertionRulesIntoChain(
         }
         step /= 2
     }
-    return chain
 }
 
 private fun applyInsertionRules(chain: List<Char>, polymerRules: Array<CharArray>): List<Char> {
