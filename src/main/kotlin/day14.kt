@@ -59,7 +59,6 @@ fun main() {
     val chainAfter10 = (1..10).fold(template) { chain, _ ->
         applyInsertionRules(chain, polymerRules)
     }.also(::println)
-    println(iterateInsertionRules(template[0], template[1], 10, polymerRules))
     val elementFrequencies = chainAfter10.groupingBy { it }.eachCount()
     val sortedFrequencies = elementFrequencies.toList().sortedBy { it.second }.also(::println)
     println(sortedFrequencies.last().second - sortedFrequencies.first().second)
