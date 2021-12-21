@@ -65,18 +65,23 @@ fun main() {
 
     val insertionCalculationRoot = PartialInsertionCalculation(template.toMutableList(), polymerRules, null)
     val insertionCalculation = PartialInsertionCalculation(
-        blankChainToHoldInsertions(3),
+        blankChainToHoldInsertions(10),
         polymerRules,
         PartialInsertionCalculation(
-            blankChainToHoldInsertions(3),
+            blankChainToHoldInsertions(10),
             polymerRules,
             PartialInsertionCalculation(
-                blankChainToHoldInsertions(2),
+                blankChainToHoldInsertions(10),
                 polymerRules,
-                PartialInsertionCalculation(blankChainToHoldInsertions(2), polymerRules, insertionCalculationRoot)
+                PartialInsertionCalculation(blankChainToHoldInsertions(10), polymerRules, insertionCalculationRoot)
             )))
-    val newChainAfter10 = insertionCalculation.asSequence().toList()
-    println(newChainAfter10)
+    val elementFrequenciesAt40 = mutableMapOf<Char, Long>()
+    insertionCalculation.asSequence().forEach {
+        elementFrequenciesAt40[it] = elementFrequenciesAt40.getOrDefault(it, 0)
+    }
+    val sortedFrequenciesAt40 = elementFrequencies.toList().sortedBy { it.second }.also(::println)
+    println(sortedFrequenciesAt40.last().second - sortedFrequenciesAt40.first().second)
+
 }
 
 private fun sizeAtIteration(iterationCount: Int, initialSize: Int): Long {
