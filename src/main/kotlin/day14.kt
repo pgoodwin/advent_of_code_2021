@@ -1,43 +1,58 @@
 import java.io.File
+import kotlin.math.min
 import kotlin.math.pow
 
-class PartialInsertionCalculation constructor(
-    private val chain: MutableList<Char>,
-    private val rules: Array<CharArray>,
-    private val source: PartialInsertionCalculation?
-) : Iterator<Char> {
-    private var index =
-        if (chain[0] == ' ') chain.size else 0 // can't supply values unless there are valid elements in the chain
-
-    override fun hasNext(): Boolean {
-        if (!needsRefill())
-            return true
-
-        if (canRefill())
-            return true
-
-        return index < chain.size
+class CachingHistogramCalculator(
+    private val iterationLevel: Int,
+    private val expansionLevel: Int,
+    private val rules: Array<CharArray>
+) {
+    private val iterationLevelHistogramForPair = mutableMapOf<Pair<Char, Char>, Map<Char, Long>>()
+    private val iterationLevelExpansionForPair = mutableMapOf<Pair<Char, Char>, List<Char>>()
+    private val nextLevelCache = run {
+        val furtherIterationsNeeded = iterationLevel - expansionLevel
+        if (furtherIterationsNeeded > 0) CachingHistogramCalculator(
+            furtherIterationsNeeded,
+            min(furtherIterationsNeeded, expansionLevel),
+            rules
+        )
+        else
+            null
     }
 
-    override fun next(): Char {
-        if (needsRefill() && canRefill())
-            refillByExpandingNextPair()
-        return chain[index++]
+    fun histogramForElements(elements: Pair<Char, Char>): Map<Char, Long> {
+        if (iterationLevelHistogramForPair.containsKey(elements)) return iterationLevelHistogramForPair[elements]!!
+
+        val histogram = mutableMapOf<Char, Long>()
+        val workingChain = expandedChainForPair(elements, expansionLevel)
+        if (nextLevelCache == null) {
+            workingChain.dropLast(1).forEach { histogram[it] = histogram.getOrDefault(it, 0) + 1 }
+        } else {
+            workingChain.asSequence().zipWithNext().forEach {
+                nextLevelCache.histogramForElements(it).forEach { (element, count) ->
+                    histogram[element] = histogram.getOrDefault(element, 0) + count
+                }
+            }
+        }
+        return histogram.also { iterationLevelHistogramForPair[elements] = histogram }
     }
 
-    private fun refillByExpandingNextPair() {
-        val first = if (chain.last() == ' ') source!!.next() else chain.last()
-        val second = source!!.next()
-        iterateInsertionRulesIntoChain(chain, first, second, rules)
-        index = 0
+    private fun expandedChainForPair(elements: Pair<Char, Char>, expansionLevel: Int): List<Char> {
+        if (iterationLevelExpansionForPair.containsKey(elements))
+            return iterationLevelExpansionForPair[elements]!!
+
+        if (nextLevelCache != null && nextLevelCache.cachesExpansionsAtLevel(expansionLevel))
+            return nextLevelCache.expandedChainForPair(elements, expansionLevel)
+
+        return expandChainForPair(elements.first, elements.second, expansionLevel, rules).also {
+            iterationLevelExpansionForPair[elements] = it
+        }
     }
 
-    private fun canRefill(): Boolean {
-        return source != null && source.hasNext()
-    }
-
-    private fun needsRefill(): Boolean {
-        return index > chain.size - 2 // Use the last element to expand the next portion of the chain
+    private fun cachesExpansionsAtLevel(desiredExpansionLevel: Int): Boolean {
+        return expansionLevel == desiredExpansionLevel
+                && iterationLevel == desiredExpansionLevel
+                || (nextLevelCache == null || !nextLevelCache.cachesExpansionsAtLevel(desiredExpansionLevel))
     }
 }
 
@@ -46,10 +61,10 @@ fun main() {
     val template = polymerFileLines.first().toList()
 
     val polymerRuleRegEx = "(\\w\\w) -> (\\w)".toRegex()
-    val polymerRulesMap = polymerFileLines.drop(2).map {
+    val polymerRulesMap = polymerFileLines.drop(2).associate {
         val (_, elementPair, insertionValue) = polymerRuleRegEx.find(it)!!.groupValues
         Pair(elementPair.toList(), insertionValue.toList().single())
-    }.toMap()
+    }
     val maxElementIndex = polymerRulesMap.keys.flatten().maxOf { it } + 1
     val polymerRules = Array(maxElementIndex.toInt()) { CharArray(maxElementIndex.toInt()) { ' ' } }
     polymerRulesMap.forEach {
@@ -63,24 +78,19 @@ fun main() {
     val sortedFrequencies = elementFrequencies.toList().sortedBy { it.second }.also(::println)
     println(sortedFrequencies.last().second - sortedFrequencies.first().second)
 
-    val insertionCalculationRoot = PartialInsertionCalculation(template.toMutableList(), polymerRules, null)
-    val insertionCalculation = PartialInsertionCalculation(
-        blankChainToHoldInsertions(10),
-        polymerRules,
-        PartialInsertionCalculation(
-            blankChainToHoldInsertions(10),
-            polymerRules,
-            PartialInsertionCalculation(
-                blankChainToHoldInsertions(10),
-                polymerRules,
-                PartialInsertionCalculation(blankChainToHoldInsertions(10), polymerRules, insertionCalculationRoot)
-            )))
+    val calculator = CachingHistogramCalculator(40, 10, polymerRules)
     val elementFrequenciesAt40 = mutableMapOf<Char, Long>()
-    insertionCalculation.asSequence().forEach {
-        elementFrequenciesAt40[it] = elementFrequenciesAt40.getOrDefault(it, 0)
+    template.asSequence().zipWithNext().forEach { elementPair ->
+        calculator.histogramForElements(elementPair).forEach { (element, count) ->
+            elementFrequenciesAt40[element] = elementFrequenciesAt40.getOrDefault(element, 0) + count
+        }
     }
-    val sortedFrequenciesAt40 = elementFrequencies.toList().sortedBy { it.second }.also(::println)
-    println(sortedFrequenciesAt40.last().second - sortedFrequenciesAt40.first().second)
+    elementFrequenciesAt40[template.last()] = elementFrequenciesAt40.getOrDefault(template.last(), 0) + 1
+    val sortedFrequenciesAt10 = elementFrequenciesAt40.toList().sortedBy { it.second }.also(::println)
+    println(sortedFrequenciesAt10.last().second - sortedFrequenciesAt10.first().second)
+
+    println(sizeAtIteration(40, 20))
+    println(elementFrequenciesAt40.values.sum())
 
 }
 
@@ -89,7 +99,7 @@ private fun sizeAtIteration(iterationCount: Int, initialSize: Int): Long {
     return powerOf2 * initialSize - powerOf2 + 1
 }
 
-private fun iterateInsertionRules(first: Char, last: Char, iterations: Int, rules: Array<CharArray>): List<Char> {
+private fun expandChainForPair(first: Char, last: Char, iterations: Int, rules: Array<CharArray>): List<Char> {
     val chain = blankChainToHoldInsertions(iterations)
     iterateInsertionRulesIntoChain(chain, first, last, rules)
     return chain
