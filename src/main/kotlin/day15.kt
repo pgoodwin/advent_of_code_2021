@@ -1,4 +1,5 @@
 import java.io.File
+import kotlin.math.max
 
 @OptIn(ExperimentalStdlibApi::class)
 fun main() {
@@ -14,7 +15,7 @@ fun main() {
 
     val explorer = ChitinExplorer(maxX, maxY, chitinLevels)
     explorer.findBestPath()
-    println(explorer.bestPathInfo.second)
+//    println(explorer.bestPathInfo.second)
 }
 
 
@@ -26,15 +27,46 @@ class ChitinExplorer(
     private val chitinLevels: LevelMap
 ) {
     var bestPathInfo = PathWithCost(listOf(), Int.MAX_VALUE)
-    private val endPoint = Point(maxX,maxY)
+    private val endPoint = Point(maxX, maxY)
     private val lowestArrivalCost = mutableMapOf<Point, Int>().withDefault { Int.MAX_VALUE }
     private val optimalPathForwardFrom = mutableMapOf<Point, Point>()
 
     fun findBestPath() {
-        findBestPath(Point(0, 0), listOf(), 0)
+//        findBestPathDepthFirst(Point(0, 0), listOf(), 0)
+        findBestPathBreadthFirst(Point(0, 0))
     }
 
-    private fun findBestPath(
+    fun findBestPathBreadthFirst(startingPoint: Point) {
+        val searchPoints = mutableListOf(startingPoint)
+        lowestArrivalCost[startingPoint] = 0
+        var maxSearchListSize = 0
+        var iterations =0
+        while (searchPoints.size > 0) {
+            searchPoints.sortBy { estimatedFinalPathCost(it) }
+            searchPoints.addAll(findNeighborsWithLowArrivalCosts(searchPoints.removeFirst()))
+            maxSearchListSize = max(maxSearchListSize, searchPoints.size)
+            iterations++
+        }
+        println("max search points: $maxSearchListSize iterations: $iterations arrival costs calculated: ${lowestArrivalCost.size}")
+    }
+
+    private fun findNeighborsWithLowArrivalCosts(location: Pair<Int, Int>): Collection<Point> {
+        return neighborsOf(location).filter { neighbor ->
+            val newArrivalCost = lowestArrivalCost[location]!! + chitinLevels[neighbor]!!
+            (lowestArrivalCost.getValue(neighbor) > newArrivalCost).also { updatedCost ->
+                if (updatedCost) {
+                    lowestArrivalCost[neighbor] = newArrivalCost
+                    if (neighbor == endPoint) println(newArrivalCost)
+                }
+            }
+        }
+    }
+
+    private fun estimatedFinalPathCost(location: Point): Int {
+        return lowestArrivalCost.getValue(location)
+    }
+
+    private fun findBestPathDepthFirst(
         currentLocation: Point,
         currentPath: Path,
         currentCost: Int
@@ -59,7 +91,7 @@ class ChitinExplorer(
             }
         }
         neighbors.forEach { nextLocation ->
-            findBestPath(nextLocation, nextPath, currentCost + chitinLevels[nextLocation]!!)
+            findBestPathDepthFirst(nextLocation, nextPath, currentCost + chitinLevels[nextLocation]!!)
         }
         if (bestPath().contains(currentLocation)) {
             val currentLocationIndex = bestPath().indexOf(currentLocation)
