@@ -1,8 +1,5 @@
 import java.io.File
 
-typealias Point = Pair<Int, Int>
-typealias EnergyMap = Map<Point, Int>
-
 @OptIn(ExperimentalStdlibApi::class)
 fun main() {
     val energies = File("octopus_energy.txt").readLines()
@@ -21,7 +18,7 @@ fun main() {
         }
 }
 
-fun printEnergy(energies: EnergyMap) {
+fun printEnergy(energies: LevelMap) {
     val maxX = energies.keys.maxOf(Point::first)
     val maxY = energies.keys.maxOf(Point::second)
     print("+")
@@ -52,7 +49,7 @@ fun printEnergy(energies: EnergyMap) {
     println("+")
 }
 
-fun step(energyAtPosition: EnergyMap): Pair<EnergyMap, Int> {
+fun step(energyAtPosition: LevelMap): Pair<LevelMap, Int> {
     val newEnergyAtPosition = energyAtPosition.mapValues { it.value + 1 }
     val (flashedEnergyAtPosition, flashCount) = propagateFlashes(newEnergyAtPosition, setOf())
     val finalEnergyAtPosition = flashedEnergyAtPosition.mapValues {
@@ -62,9 +59,9 @@ fun step(energyAtPosition: EnergyMap): Pair<EnergyMap, Int> {
 }
 
 fun propagateFlashes(
-    energyAtPosition: EnergyMap,
+    energyAtPosition: LevelMap,
     flashedPositions: Set<Point>
-): Pair<EnergyMap, Int> {
+): Pair<LevelMap, Int> {
     val newFlashes = energyAtPosition
         .filter { it.value > 9 }
         .filter { !flashedPositions.contains(it.key) }
