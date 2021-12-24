@@ -5,17 +5,28 @@ import kotlin.math.max
 fun main() {
     val chitinLines = File("cave_chitins.txt").readLines()
     val chitinLevels = mutableMapOf<Point, Int>().withDefault { 0 }
-    val maxX = chitinLines[0].length - 1
-    val maxY = chitinLines.size - 1
+    val maxBaseChitinX = chitinLines[0].length - 1
+    val maxBaseChitinY = chitinLines.size - 1
     chitinLines.forEachIndexed { y, levels ->
         levels.forEachIndexed { x, levelAsChar ->
             chitinLevels[Point(x, y)] = levelAsChar.digitToInt()
         }
     }
 
-    val explorer = ChitinExplorer(maxX, maxY) { location: Point -> chitinLevels[location]!! }
-    explorer.findBestPath()
+    val expandedChitin = expandedChitin(maxBaseChitinX + 1, maxBaseChitinY + 1, chitinLevels)
+    ChitinExplorer(maxBaseChitinX, maxBaseChitinY, expandedChitin).findBestPath()
+    ChitinExplorer(((maxBaseChitinX + 1) * 5) - 1, ((maxBaseChitinY + 1) * 5) - 1, expandedChitin).findBestPath()
 }
+
+private fun expandedChitin(width: Int, depth: Int, chitinLevels: MutableMap<Point, Int>) =
+    { location: Point ->
+        val x = location.first % width
+        val y = location.second % depth
+        val enhancement = location.first / width + location.second / depth
+        val enhancedChitin = (chitinLevels[Point(x, y)]!! + enhancement) % 9
+        if (enhancedChitin == 0) 9 else enhancedChitin
+    }
+
 
 class ChitinExplorer(
     private val maxX: Int,
@@ -33,14 +44,15 @@ class ChitinExplorer(
         val searchPoints = mutableListOf(startingPoint)
         lowestArrivalCost[startingPoint] = 0
         var maxSearchListSize = 0
-        var iterations =0
+        var iterations = 0
         while (searchPoints.size > 0) {
             searchPoints.sortBy { estimatedFinalPathCost(it) }
             searchPoints.addAll(findNeighborsWithLowArrivalCosts(searchPoints.removeFirst()))
             maxSearchListSize = max(maxSearchListSize, searchPoints.size)
             iterations++
+            if (iterations % 10000 == 0)
+                println("cur search points: ${searchPoints.size} iterations: $iterations arrival costs calculated: ${lowestArrivalCost.size}")
         }
-        println("max search points: $maxSearchListSize iterations: $iterations arrival costs calculated: ${lowestArrivalCost.size}")
     }
 
     private fun findNeighborsWithLowArrivalCosts(location: Pair<Int, Int>): Collection<Point> {
